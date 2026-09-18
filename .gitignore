@@ -133,3 +133,4 @@ dist
 
 #others and misc
 .swagger.html
+.src/config_old.ts
