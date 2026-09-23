@@ -45,6 +45,32 @@ export class CommentsQueryRepository {
         return CommentViewDto.mapToView(comment, userReaction);
     }
 
+
+    async SQLgetCommentById(
+        commentId: string,
+        userId?: string | undefined,
+    ): Promise<CommentViewDto | null> {
+        const comment = await this.CommentModel.findOne({
+            _id: commentId,
+            deletedAt: null,
+        }).lean<FlattenMaps<CommentDocument> & { _id: Types.ObjectId }>();
+
+        if (!comment) {
+            return null;
+        }
+
+        let userReaction: LikeStatus = LikeStatus.None;
+        if (userId) {
+            userReaction =
+                await this.commentLikesQueryRepository.getReactionForComment(
+                    commentId,
+                    userId,
+                );
+        }
+
+        return CommentViewDto.mapToView(comment, userReaction);
+    }
+
     async getCommentsByPostId({
         postId,
         query,

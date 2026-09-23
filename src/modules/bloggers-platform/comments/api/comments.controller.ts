@@ -26,7 +26,7 @@ import { BasicAuthGuard } from '../../../authorisation/guards/basic/basic.auth-g
 import { ExtractUserIfExistsFromRequest } from '../../../authorisation/decorators/extract-user-if-exists.decorator';
 import { DeletePostById } from '../../posts/application/usecases/delete-post-by-id.usecase';
 import { DeleteCommentById } from '../application/usecases/delete-comment-by-id.usecase';
-import { CommandBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { UpdateCommentById } from '../application/usecases/update-comment-by-id.usecase';
 import { UpdateCommentInputDto } from './input-dto/update-comment.input-dto';
 import {
@@ -37,6 +37,7 @@ import { ChangePostLikeStatusInputDto } from '../../posts/api/input-dto/change-p
 import { ChangePostLikeStatus } from '../../posts/application/usecases/change-post-like-status.usecase';
 import { ChangeCommentLikeStatusInputDto } from './input-dto/change-comment-like-status.input.dto';
 import { ChangeCommentLikeStatus } from '../application/usecases/change-comment-like-status.usecase';
+import { GetCommentById } from '../application/usecases/get-comment-by-id.usecase';
 
 @ApiTags('Comments endpoint')
 @Controller('comments')
@@ -46,10 +47,30 @@ export class CommentsController {
         private commentsCommandRepository: CommentsCommandRepository,
         private commentsService: CommentsService,
         private readonly commandBus: CommandBus,
+        private readonly queryBus: QueryBus,
     ) {
         console.log('CommentsController created');
     }
 
+    @ApiOperation({ summary: 'Get comment specified by id' })
+    @ApiParam({ name: 'id' })
+    // @UseGuards(JwtOptionalAuthGuard)
+    @Get(':id')
+    async getCommentById(
+        @Param('id') commentId: string,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<CommentViewDto> {
+        const comment = await this.commentsQueryRepository.getCommentById(
+            commentId,
+            user.userId,
+        );
+
+        return this.queryBus.execute<CommentViewDto>(
+            new GetCommentById(commentId, user.userId),
+        );
+    }
+
+    //*************************************
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a comment' })
     @ApiParam({ name: 'commentId' })
     @HttpCode(HttpStatus.NO_CONTENT)
@@ -67,30 +88,6 @@ export class CommentsController {
                 newLikeStatus: body.likeStatus,
             }),
         );
-    }
-
-    @ApiOperation({ summary: 'Get comment specified by id' })
-    @ApiParam({ name: 'id' })
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get(':id')
-    async getCommentById(
-        @Param('id') commentId: string,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<CommentViewDto> {
-        const comment = await this.commentsQueryRepository.getCommentById(
-            commentId,
-            user.userId,
-        );
-
-        if (!comment) {
-            // throw new NotFoundException("Comment not found!");
-            throw new DomainException({
-                code: DomainExceptionCode.CommentNotFound,
-                message: 'Comment not found!',
-            });
-        }
-
-        return comment;
     }
 
     @ApiOperation({ summary: 'Update comment specified by id' })
