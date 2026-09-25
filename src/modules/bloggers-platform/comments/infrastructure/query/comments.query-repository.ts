@@ -50,23 +50,51 @@ export class CommentsQueryRepository {
         commentId: string,
         userId?: string | undefined,
     ): Promise<CommentViewDto | null> {
-        const comment = await this.CommentModel.findOne({
-            _id: commentId,
-            deletedAt: null,
-        }).lean<FlattenMaps<CommentDocument> & { _id: Types.ObjectId }>();
+
+        // {
+        //     "id": "string",
+        //     "content": "string",
+        //     "commentatorInfo": {
+        //         "userId": "string",
+        //         "userLogin": "string"
+        //     },
+        //     "createdAt": "2026-09-25T19:08:52.356Z",
+        //     "likesInfo": {
+        //         "likesCount": 0,
+        //         "dislikesCount": 0,
+        //         "myStatus": "None"
+        //     }
+        // }
+
+        const commentInfoQuery = `
+            SELECT
+                c.id,
+                c.content,
+                c.user_id                   AS "userId",
+                u.login                     AS "userLogin",
+                c.created_at                AS "createdAt",
+                c.likes_count               AS "likesCount",
+                c.dislikes_count            AS "dislikesCount",
+                COALESCE(l.status, 'None')  AS "myStatus"
+            FROM public.comments c
+                -- Автора комментария подтягиваем через JOIN
+                LEFT JOIN public.users u ON c.user_id = u.id AND u.deleted_at IS NULL
+                -- Статус лайка текущего юзера ($1)
+                LEFT JOIN public.comment_likes l ON c.id = l.comment_id AND l.user_id = $1
+                -- Проверяем, что пост, к которому относится коммент, не удален
+                LEFT JOIN public.posts p ON c.post_id = p.id
+            WHERE
+                c.id = $2
+                AND c.deleted_at IS NULL
+                AND (p.id IS NULL OR p.deleted_at IS NULL)
+
+        `;
 
         if (!comment) {
             return null;
         }
 
-        let userReaction: LikeStatus = LikeStatus.None;
-        if (userId) {
-            userReaction =
-                await this.commentLikesQueryRepository.getReactionForComment(
-                    commentId,
-                    userId,
-                );
-        }
+
 
         return CommentViewDto.mapToView(comment, userReaction);
     }

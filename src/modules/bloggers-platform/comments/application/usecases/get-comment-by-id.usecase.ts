@@ -7,7 +7,7 @@ import { DomainExceptionCode } from '../../../../../core/exceptions/domain-excep
 
 export class GetCommentById extends Query<CommentViewDto> {
     constructor(
-        public readonly postId: string,
+        public readonly commentId: string,
         public readonly userId: string | undefined,
     ) {
         super();
@@ -22,11 +22,11 @@ export class GetCommentByIdHandler implements IQueryHandler<GetCommentById> {
     ) {}
 
     // тут обрабатываем два сценария - аноноимный (user = undefined) и неанонимный запрос
-    async execute({ postId, userId }: GetCommentById): Promise<CommentViewDto> {
-        const commentView = await this.commentsQueryRepository.SQLgetCommentById({
-            postId,
+    async execute({ commentId, userId }: GetCommentById): Promise<CommentViewDto> {
+        const commentView = await this.commentsQueryRepository.SQLgetCommentById(
+            commentId,
             userId,
-        });
+        );
 
         if (!commentView) {
             // throw new NotFoundException("Comment not found!");
