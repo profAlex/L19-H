@@ -5,19 +5,34 @@ import {
 } from '../../domain/comment.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CommentViewDto } from '../../api/view-dto/comments.view-dto';
+import { CommentViewDto, SQLCommentViewDto } from '../../api/view-dto/comments.view-dto';
 import { GetCommentsQueryParams } from '../../api/input-dto/get-comments-query-params.input-dto';
 import { PaginatedViewDto } from '../../../../../core/dto/base.paginated.view-dto';
 import { SortDirection } from '../../../../../core/dto/base.query-params.input-dto';
 import { FlattenMaps, Types } from 'mongoose';
 import { LikeStatus } from '../../../../../core/enums/like-status.enum';
 import { CommentLikesQueryRepository } from '../../../likes/infrastructure/query/comment-likes.query-repository';
+import { DataSource } from 'typeorm';
+
+
+export interface getCommentsViewDto {
+    id: string;
+    content: string;
+    userId: string;
+    userLogin: string;
+    createdAt: string;
+    likesCount: number;
+    dislikesCount: number;
+    myStatus: string;
+}
+
 
 @Injectable()
 export class CommentsQueryRepository {
     constructor(
         @InjectModel(Comment.name) private CommentModel: CommentModelType,
         private readonly commentLikesQueryRepository: CommentLikesQueryRepository,
+        private readonly dataSource: DataSource,
     ) {}
 
     async getCommentById(
@@ -77,26 +92,28 @@ export class CommentsQueryRepository {
                 c.dislikes_count            AS "dislikesCount",
                 COALESCE(l.status, 'None')  AS "myStatus"
             FROM public.comments c
-                -- Автора комментария подтягиваем через JOIN
-                LEFT JOIN public.users u ON c.user_id = u.id AND u.deleted_at IS NULL
-                -- Статус лайка текущего юзера ($1)
-                LEFT JOIN public.comment_likes l ON c.id = l.comment_id AND l.user_id = $1
-                -- Проверяем, что пост, к которому относится коммент, не удален
-                LEFT JOIN public.posts p ON c.post_id = p.id
+                     -- Пользователя и лайки соединяем через LEFT JOIN (юзер может быть удален, а лайка может не быть)
+                     LEFT JOIN public.users u ON c.user_id = u.id AND u.deleted_at IS NULL
+                     LEFT JOIN public.comment_likes l ON c.id = l.comment_id AND l.user_id = $1
+
+                -- Пост и Блог проверяем строго через INNER JOIN
+                     INNER JOIN public.posts p ON c.post_id = p.id
+                     INNER JOIN public.blogs b ON p.blog_id = b.id
             WHERE
                 c.id = $2
-                AND c.deleted_at IS NULL
-                AND (p.id IS NULL OR p.deleted_at IS NULL)
-
+              -- Вся цепочка родительских объектов должна быть не удалена
+              AND c.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND b.deleted_at IS NULL;
         `;
 
-        if (!comment) {
+        const [commentRow] = await this.dataSource.query<getCommentsViewDto[]>(commentInfoQuery, [userId ?? null, commentId]);
+
+        if (!commentRow) {
             return null;
         }
 
-
-
-        return CommentViewDto.mapToView(comment, userReaction);
+        return SQLCommentViewDto.mapSQLRowToView(commentRow);
     }
 
     async getCommentsByPostId({

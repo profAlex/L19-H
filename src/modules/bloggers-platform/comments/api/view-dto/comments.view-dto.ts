@@ -1,6 +1,7 @@
 import { LikeStatus } from '../../../../../core/enums/like-status.enum';
 import { Comment } from '../../domain/comment.entity';
 import { FlattenMaps, Types } from 'mongoose';
+import { getCommentsViewDto } from '../../infrastructure/query/comments.query-repository';
 
 // export type CommentStorageModel = {
 //     _id: ObjectId;
@@ -114,5 +115,52 @@ export class CommentViewDto {
         myStatus?: LikeStatus,
     ): CommentViewDto {
         return new CommentViewDto(comment, myStatus);
+    }
+
+
+}
+
+
+function isLikeStatus(value: any): value is LikeStatus {
+    return Object.values(LikeStatus).includes(value);
+}
+
+
+export class SQLCommentViewDto {
+    id: string;
+    content: string;
+    commentatorInfo: {
+        userId: string;
+        userLogin: string;
+    };
+    createdAt: string;
+    likesInfo: {
+        likesCount: number;
+        dislikesCount: number;
+        myStatus: LikeStatus;
+    };
+
+    static mapSQLRowToView(
+        raw: getCommentsViewDto
+    ): CommentViewDto {
+        const dto = new SQLCommentViewDto();
+
+        dto.id = raw.id;
+        dto.content = raw.content;
+        dto.commentatorInfo = {
+            userId: raw.userId,
+            userLogin: raw.userLogin ?? 'Unknown User',
+        };
+        // Безопасное приведение даты к ISO-строке
+        dto.createdAt = raw.createdAt ? new Date(raw.createdAt).toISOString() : new Date().toISOString();
+        dto.likesInfo = {
+            likesCount: Number(raw.likesCount ?? 0),
+            dislikesCount: Number(raw.dislikesCount ?? 0),
+            myStatus: isLikeStatus(raw.myStatus)
+                ? raw.myStatus
+                : LikeStatus.None
+        };
+
+        return dto;
     }
 }
