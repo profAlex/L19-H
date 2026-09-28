@@ -121,6 +121,7 @@ export class CommentViewDto {
 }
 
 
+// вспомогательная функция для конвертации значения в тип enum LikeStatus
 function isLikeStatus(value: any): value is LikeStatus {
     return Object.values(LikeStatus).includes(value);
 }
@@ -151,8 +152,16 @@ export class SQLCommentViewDto {
             userId: raw.userId,
             userLogin: raw.userLogin ?? 'Unknown User',
         };
-        // Безопасное приведение даты к ISO-строке
-        dto.createdAt = raw.createdAt ? new Date(raw.createdAt).toISOString() : new Date().toISOString();
+
+        // пытаемся сформировать дату из пришедшего значения string или Date
+        const parsedDate = new Date(raw.createdAt);
+
+        // если полученное значение .getTime() это не number то это несогласованное состояние данных, по хорошему это надо править
+        if (isNaN(parsedDate.getTime())) {
+            throw new Error(`Data integrity issue: Invalid createdAt timestamp for comment ${raw.id}`);
+        }
+
+        dto.createdAt = parsedDate.toISOString();
         dto.likesInfo = {
             likesCount: Number(raw.likesCount ?? 0),
             dislikesCount: Number(raw.dislikesCount ?? 0),

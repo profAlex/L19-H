@@ -19,10 +19,10 @@ export interface getCommentsViewDto {
     id: string;
     content: string;
     userId: string;
-    userLogin: string;
-    createdAt: string;
-    likesCount: number;
-    dislikesCount: number;
+    userLogin: string | null;        // Защищает от NULL
+    createdAt: Date | string;        // Защищает от объекта Date
+    likesCount: number | string;     // Защищает от строк из COUNT()
+    dislikesCount: number | string;  // Защищает от строк из COUNT()
     myStatus: string;
 }
 
@@ -38,7 +38,7 @@ export class CommentsQueryRepository {
     async getCommentById(
         commentId: string,
         userId?: string | undefined,
-    ): Promise<CommentViewDto | null> {
+    ): Promise<SQLCommentViewDto | null> {
         const comment = await this.CommentModel.findOne({
             _id: commentId,
             deletedAt: null,

@@ -1,5 +1,5 @@
 import { IQueryHandler, Query, QueryHandler } from '@nestjs/cqrs';
-import { CommentViewDto } from '../../api/view-dto/comments.view-dto';
+import { CommentViewDto, SQLCommentViewDto } from '../../api/view-dto/comments.view-dto';
 import { CommentsQueryRepository } from '../../infrastructure/query/comments.query-repository';
 import { CommentLikesQueryRepository } from '../../../likes/infrastructure/query/comment-likes.query-repository';
 import { DomainException } from '../../../../../core/exceptions/domain-exceptions';
@@ -22,7 +22,7 @@ export class GetCommentByIdHandler implements IQueryHandler<GetCommentById> {
     ) {}
 
     // тут обрабатываем два сценария - аноноимный (user = undefined) и неанонимный запрос
-    async execute({ commentId, userId }: GetCommentById): Promise<CommentViewDto> {
+    async execute({ commentId, userId }: GetCommentById): Promise<SQLCommentViewDto> {
         const commentView = await this.commentsQueryRepository.SQLgetCommentById(
             commentId,
             userId,
