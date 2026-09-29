@@ -6,12 +6,19 @@ import {
     CommentLikeModelType,
 } from '../domain/comment-like.entity';
 import { PostLikeDocument } from '../domain/post-like.entity';
+import { LikeStatus } from '../../../../core/enums/like-status.enum';
+import { DataSource } from 'typeorm';
+
+function isLikeStatus(val: any): val is LikeStatus {
+    return Object.values(LikeStatus).includes(val);
+}
 
 @Injectable()
 export class CommentLikesCommandRepository {
     constructor(
         @InjectModel(CommentLike.name)
         private CommentLikeModel: CommentLikeModelType,
+        private readonly dataSource: DataSource,
     ) {}
 
     async save(commentLike: CommentLikeDocument): Promise<void> {
@@ -29,5 +36,59 @@ export class CommentLikesCommandRepository {
             commentId,
             userId,
         });
+    }
+
+    async SQLgetLikeByCommentIdAndUserId({
+        commentId,
+        userId,
+    }: {
+        commentId: string;
+        userId: string;
+    }): Promise<LikeStatus | null> {
+        const query = `
+            SELECT 
+                status
+            FROM comment_likes cl
+                INNER JOIN comments c ON (cl.comment_id = c.id AND cl.user_id = c.user_id)
+                INNER JOIN posts p ON (c.post_id = p.id)
+                INNER JOIN blogs b ON (p.blog_id = b.id)
+            WHERE
+                cl.comment_id = ${commentId} AND cl.user_id = ${userId} 
+                AND c.deleted_at IS NULL
+                AND p.deleted_at IS NULL
+                AND b.deleted_at IS NULL;
+        `;
+
+        const [commentLikeStatus] =
+            await this.dataSource.query<{ status: string }[]>(query);
+
+        if (!commentLikeStatus || !isLikeStatus(commentLikeStatus)) {
+            return null;
+        }
+
+        return commentLikeStatus;
+    }
+
+    async updateLikeStatus(commentId:string, userId:string, status:LikeStatus): Promise<void> {
+        const query = `
+        INSERT INTO comment_likes (comment_id, user_id, status)
+        VALUES ($1, $2, $3) 
+        ON CONFLICT (comment_id,
+            user_id) DO
+        UPDATE SET
+            comment_id = EXCLUDED.comment_id,
+            user_id = EXCLUDED.user_id,
+            status = EXCLUDED.status;
+    `;
+
+        const queryParams = [
+            commentId,
+            userId,
+            status,
+        ];
+
+        // console.log("query formed successfully");
+
+        await this.dataSource.query(query, queryParams);
     }
 }

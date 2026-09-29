@@ -70,7 +70,7 @@ export class CommentsController {
         );
     }
 
-    //*************************************
+
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a comment' })
     @ApiParam({ name: 'commentId' })
     @HttpCode(HttpStatus.NO_CONTENT)
@@ -89,6 +89,7 @@ export class CommentsController {
             }),
         );
     }
+    //*************************************
 
     @ApiOperation({ summary: 'Update comment specified by id' })
     @ApiParam({ name: 'commentId' })

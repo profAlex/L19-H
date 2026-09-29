@@ -34,27 +34,52 @@ export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCom
     async execute({ dto }: ChangeCommentLikeStatus): Promise<void> {
         const { commentId, userId, newLikeStatus } = dto;
 
-        // проверяем что коммент, которому пользователь меняет лайк-статус существует и сразу возращаем ссылку для работы
-        const comment =
-            await this.commentsCommandRepository.getCommentById(commentId);
-        if (!comment) {
-            throw new DomainException({
-                code: DomainExceptionCode.CommentNotFound,
-                message: `Comment not found`,
-            });
-        }
+        // новый порядок для postgreSQL:
+        // запрашиваем статус коммента, на случай если он не существует и новый статус None -
+        // нам собственно ничего менять не нужно, а если новый статус отличен от None,
+        // то соответствующим образом апдейтить запись о комменте
+/*
 
-        // проверяем наличие реакции на коммент в коллекции коммент-лайков и если он существует сразу возвращаем документ для изменения
-        const previousReactionStatus =
-            await this.commentLikesCommandRepository.findSingleCommentLikeByCommentIdAndUserId(
-                { commentId, userId },
-            );
+        const checkEmailQuery = `
+            SELECT EXISTS (
+                SELECT 1
+                FROM public."users"
+                WHERE "email" = $1 AND "deleted_at" IS NULL
+            ) as "exists";
+        `;
+        const [emailResult] = await this.dataSource.query<{ exists: boolean }[]>(
+            checkEmailQuery,
+            [email],
+        );
+*/
 
-        // находим данные юзера, который меняет реакицю, нам нужен будет от него userLogin
-        const user =
-            await this.usersExternalQueryRepository.getByIdOrNotFoundFail(
-                userId,
-            );
+
+        //
+        const commentLikeStatus = await this.commentLikesCommandRepository.SQLgetLikeByCommentIdAndUserId({commentId, userId});
+        // *********************
+
+
+        // // проверяем что коммент, которому пользователь меняет лайк-статус существует и сразу возращаем ссылку для работы
+        // const comment =
+        //     await this.commentsCommandRepository.getCommentById(commentId);
+        // if (!comment) {
+        //     throw new DomainException({
+        //         code: DomainExceptionCode.CommentNotFound,
+        //         message: `Comment not found`,
+        //     });
+        // }
+        //
+        // // проверяем наличие реакции на коммент в коллекции коммент-лайков и если он существует сразу возвращаем документ для изменения
+        // const previousReactionStatus =
+        //     await this.commentLikesCommandRepository.findSingleCommentLikeByCommentIdAndUserId(
+        //         { commentId, userId },
+        //     );
+        //
+        // // находим данные юзера, который меняет реакицю, нам нужен будет от него userLogin
+        // const user =
+        //     await this.usersExternalQueryRepository.getByIdOrNotFoundFail(
+        //         userId,
+        //     );
 
         // НАЧАЛО ПРОВЕРОК
         // если прежней реакции не найдено и новая реакция не None

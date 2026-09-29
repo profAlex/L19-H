@@ -22,6 +22,14 @@ export class CommentsCommandRepository {
         await comment.save();
     }
 
+    // async SQLgetCimmentById(id: string): Promise<LikeStatus | null> {
+    //
+    //     const query = `
+    //         SELECT
+    //     `;
+    // }
+
+
     async getCommentById(id: string): Promise<CommentDocument | null> {
         return this.CommentModel.findOne({
             _id: id,

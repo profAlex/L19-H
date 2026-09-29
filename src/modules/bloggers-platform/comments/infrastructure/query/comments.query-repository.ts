@@ -96,12 +96,12 @@ export class CommentsQueryRepository {
                      LEFT JOIN public.users u ON c.user_id = u.id AND u.deleted_at IS NULL
                      LEFT JOIN public.comment_likes l ON c.id = l.comment_id AND l.user_id = $1
 
-                -- Пост и Блог проверяем строго через INNER JOIN
+                    -- Пост и Блог проверяем строго через INNER JOIN 
                      INNER JOIN public.posts p ON c.post_id = p.id
                      INNER JOIN public.blogs b ON p.blog_id = b.id
             WHERE
                 c.id = $2
-              -- Вся цепочка родительских объектов должна быть не удалена
+              -- Вся цепочка родительских объектов должна быть не удалена, чтобы гарантировать lazy cascade soft deletion
               AND c.deleted_at IS NULL
               AND p.deleted_at IS NULL
               AND b.deleted_at IS NULL;
