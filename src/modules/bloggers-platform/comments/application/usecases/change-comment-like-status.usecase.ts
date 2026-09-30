@@ -38,26 +38,44 @@ export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCom
         // запрашиваем статус коммента, на случай если он не существует и новый статус None -
         // нам собственно ничего менять не нужно, а если новый статус отличен от None,
         // то соответствующим образом апдейтить запись о комменте
-/*
+        /*
+        
+                const checkEmailQuery = `
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM public."users"
+                        WHERE "email" = $1 AND "deleted_at" IS NULL
+                    ) as "exists";
+                `;
+                const [emailResult] = await this.dataSource.query<{ exists: boolean }[]>(
+                    checkEmailQuery,
+                    [email],
+                );
+        */
 
-        const checkEmailQuery = `
-            SELECT EXISTS (
-                SELECT 1
-                FROM public."users"
-                WHERE "email" = $1 AND "deleted_at" IS NULL
-            ) as "exists";
-        `;
-        const [emailResult] = await this.dataSource.query<{ exists: boolean }[]>(
-            checkEmailQuery,
-            [email],
-        );
-*/
+        // сначала проверяем что коммент вообще существует, т.е. и пост к которому комментарий относится существует,
+        // а также существует и блог к которому относится пост
+        const ifCommentExists =
+            await this.commentsCommandRepository.SQLifCommentExists(
+                commentId,
+            );
 
+        if (!ifCommentExists) {
+            throw new DomainException({
+                code: DomainExceptionCode.CommentNotFound,
+                message: `Comment not found`,
+            });
+        }
 
-        //
-        const commentLikeStatus = await this.commentLikesCommandRepository.SQLgetLikeByCommentIdAndUserId({commentId, userId});
+        // теперь вычисляем существующий статус лайка-дизлайка (если он есть вообще)
+        const commentLikeStatus =
+            await this.commentLikesCommandRepository.SQLgetLikeByCommentIdAndUserId(
+                {
+                    commentId,
+                    userId,
+                },
+            );
         // *********************
-
 
         // // проверяем что коммент, которому пользователь меняет лайк-статус существует и сразу возращаем ссылку для работы
         // const comment =
@@ -82,35 +100,23 @@ export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCom
         //     );
 
         // НАЧАЛО ПРОВЕРОК
-        // если прежней реакции не найдено и новая реакция не None
-        if (previousReactionStatus === null && newLikeStatus !== 'None') {
+        // если прежней реакции не найдено и новая реакция не None, значит реакция добавляется впервые
+        // и надо будет просто увеличить счетчик лайков или дислайков и добавить новую запись в
+        if (commentLikeStatus === null && newLikeStatus !== 'None') {
             // создаем новый лайк в базе
-            const newLikeDocument = this.CommentLikeModel.createInstance({
-                commentId: commentId,
-                userId: userId,
-            });
-            newLikeDocument.likeStatus = newLikeStatus;
 
-            await this.commentLikesCommandRepository.save(newLikeDocument);
-
-            // добавляем реакцию в счетчик реакций в базе комментариев
-            const ifAddReactionSuccessfull =
-                await this.commentsCommandRepository.addCommentReaction({
-                    sentCommentId: commentId,
-                    newStatus: newLikeStatus,
-                });
-
-            if (!ifAddReactionSuccessfull) {
-                throw new DomainException({
-                    code: DomainExceptionCode.CommentNotFound,
-                    message: `Comment not found`,
-                });
+            // меняем счетчик
+            if (newLikeStatus === 'Like') {
+                await this.commentsCommandRepository.SQLchangeCommentLikesCounter(commentId, 1);
+            }
+            else if (newLikeStatus === 'Dislike') {
+                await this.commentsCommandRepository.SQLchangeCommentDislikesCounter(commentId, 1);
             }
         }
         // если прежняя реакция найдена и она не равна вновь переданной
         else if (
-            previousReactionStatus !== null &&
-            previousReactionStatus.likeStatus !== newLikeStatus
+            commentLikeStatus !== null &&
+            commentLikeStatus !== newLikeStatus
         ) {
             // дополнительное условие - если передали лайк = none - удалить запись из лайк репозитория,
             // не забыть вызвать nullifyReaction для корректировки общего счетчика лайков-дизлайков

@@ -11,11 +11,15 @@ import { PaginatedViewDto } from '../../../../core/dto/base.paginated.view-dto';
 import { SortDirection } from '../../../../core/dto/base.query-params.input-dto';
 import { CreateCommentApiInputDto } from '../api/input-dto/create-comment.api.input-dto';
 import { LikeStatus } from '../../../../core/enums/like-status.enum';
+import { DataSource } from 'typeorm';
+import { CounterDirection } from '../../likes/infrastructure/comment-likes.command-repository';
 
 @Injectable()
 export class CommentsCommandRepository {
     constructor(
         @InjectModel(Comment.name) private CommentModel: CommentModelType,
+        private readonly dataSource: DataSource,
+
     ) {}
 
     async save(comment: CommentDocument): Promise<void> {
@@ -28,6 +32,71 @@ export class CommentsCommandRepository {
     //         SELECT
     //     `;
     // }
+
+
+    async SQLifCommentExists(commentId: string): Promise<boolean> {
+        const query = `
+            SELECT EXISTS (
+                SELECT 1
+                FROM comments c
+                    INNER JOIN posts p ON c.post_id = p.id
+                    INNER JOIN blogs b ON (p.blog_id = b.id)
+                
+                WHERE c.id = $1
+                    AND c.deleted_at IS NULL
+                    AND p.deleted_at IS NULL
+                    AND b.deleted_at IS NULL) AS "exists";
+        `;
+
+        const [queryRow] = await this.dataSource.query(query, [commentId]);
+
+        return !!queryRow;
+    }
+
+
+    async SQLchangeCommentLikesCounter(commentId: string, direction: CounterDirection): Promise<void> {
+        const query = `
+            UPDATE public.comments
+            SET likes_count = GREATEST(0, likes_count + $2)
+            WHERE id = $1 AND deleted_at IS NULL;
+        `;
+
+        await this.dataSource.query(query, [commentId, direction]);
+    }
+
+
+    async SQLchangeCommentDislikesCounter(commentId: string, direction: CounterDirection): Promise<void> {
+        const query = `
+            UPDATE public.comments
+            SET dislikes_count = GREATEST(0, dislikes_count + $2)
+            WHERE id = $1 AND deleted_at IS NULL;
+        `;
+
+        await this.dataSource.query(query, [commentId, direction]);
+    }
+
+
+    async SQLswitchToLikeCommentCounter(commentId: string): Promise<void>{
+        const query = `
+            UPDATE public.comments
+            SET dislikes_count = GREATEST(0, dislikes_count - 1),
+                likes_count = GREATEST(0, likes_count + 1)
+            WHERE id = $1 AND deleted_at IS NULL;
+        `;
+
+        await this.dataSource.query(query, [commentId]);
+    }
+
+    async SQLswitchToDislikeCommentCounter(commentId: string): Promise<void>{
+        const query = `
+            UPDATE public.comments
+            SET dislikes_count = GREATEST(0, dislikes_count - 1),
+                likes_count = GREATEST(0, likes_count + 1)
+            WHERE id = $1 AND deleted_at IS NULL;
+        `;
+
+        await this.dataSource.query(query, [commentId]);
+    }
 
 
     async getCommentById(id: string): Promise<CommentDocument | null> {

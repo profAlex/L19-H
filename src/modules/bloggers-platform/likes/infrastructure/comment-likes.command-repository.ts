@@ -13,6 +13,9 @@ function isLikeStatus(val: any): val is LikeStatus {
     return Object.values(LikeStatus).includes(val);
 }
 
+export type CounterDirection = 1 | -1;
+
+
 @Injectable()
 export class CommentLikesCommandRepository {
     constructor(
@@ -38,6 +41,27 @@ export class CommentLikesCommandRepository {
         });
     }
 
+    async updateLikeStatus(
+        commentId: string,
+        userId: string,
+        status: LikeStatus,
+    ): Promise<void> {
+        const query = `
+            INSERT INTO comment_likes (comment_id, user_id, status)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (comment_id,
+                user_id) DO UPDATE SET comment_id = EXCLUDED.comment_id,
+                                       user_id    = EXCLUDED.user_id,
+                                       status     = EXCLUDED.status;
+        `;
+
+        const queryParams = [commentId, userId, status];
+
+        // console.log("query formed successfully");
+
+        await this.dataSource.query(query, queryParams);
+    }
+
     async SQLgetLikeByCommentIdAndUserId({
         commentId,
         userId,
@@ -46,17 +70,16 @@ export class CommentLikesCommandRepository {
         userId: string;
     }): Promise<LikeStatus | null> {
         const query = `
-            SELECT 
-                status
+            SELECT status
             FROM comment_likes cl
-                INNER JOIN comments c ON (cl.comment_id = c.id AND cl.user_id = c.user_id)
-                INNER JOIN posts p ON (c.post_id = p.id)
-                INNER JOIN blogs b ON (p.blog_id = b.id)
-            WHERE
-                cl.comment_id = ${commentId} AND cl.user_id = ${userId} 
-                AND c.deleted_at IS NULL
-                AND p.deleted_at IS NULL
-                AND b.deleted_at IS NULL;
+                     INNER JOIN comments c ON (cl.comment_id = c.id AND cl.user_id = c.user_id)
+                     INNER JOIN posts p ON (c.post_id = p.id)
+                     INNER JOIN blogs b ON (p.blog_id = b.id)
+            WHERE cl.comment_id = ${commentId}
+              AND cl.user_id = ${userId}
+              AND c.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND b.deleted_at IS NULL;
         `;
 
         const [commentLikeStatus] =
@@ -69,26 +92,6 @@ export class CommentLikesCommandRepository {
         return commentLikeStatus;
     }
 
-    async updateLikeStatus(commentId:string, userId:string, status:LikeStatus): Promise<void> {
-        const query = `
-        INSERT INTO comment_likes (comment_id, user_id, status)
-        VALUES ($1, $2, $3) 
-        ON CONFLICT (comment_id,
-            user_id) DO
-        UPDATE SET
-            comment_id = EXCLUDED.comment_id,
-            user_id = EXCLUDED.user_id,
-            status = EXCLUDED.status;
-    `;
 
-        const queryParams = [
-            commentId,
-            userId,
-            status,
-        ];
 
-        // console.log("query formed successfully");
-
-        await this.dataSource.query(query, queryParams);
-    }
 }
