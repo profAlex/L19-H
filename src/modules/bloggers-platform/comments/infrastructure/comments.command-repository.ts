@@ -48,9 +48,9 @@ export class CommentsCommandRepository {
                     AND b.deleted_at IS NULL) AS "exists";
         `;
 
-        const [queryRow] = await this.dataSource.query(query, [commentId]);
+        const [queryRow] = await this.dataSource.query<{exists: boolean}[]>(query, [commentId]);
 
-        return !!queryRow;
+        return queryRow?.exists ?? false; // на случай если queryRow вернется как undefined по каким-то причинам
     }
 
 
@@ -90,8 +90,8 @@ export class CommentsCommandRepository {
     async SQLswitchToDislikeCommentCounter(commentId: string): Promise<void>{
         const query = `
             UPDATE public.comments
-            SET dislikes_count = GREATEST(0, dislikes_count - 1),
-                likes_count = GREATEST(0, likes_count + 1)
+            SET likes_count = GREATEST(0, likes_count - 1),
+                dislikes_count = GREATEST(0, dislikes_count + 1)
             WHERE id = $1 AND deleted_at IS NULL;
         `;
 

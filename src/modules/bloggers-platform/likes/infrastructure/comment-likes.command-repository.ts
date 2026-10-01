@@ -41,7 +41,7 @@ export class CommentLikesCommandRepository {
         });
     }
 
-    async updateLikeStatus(
+    async SQLupdateLikeStatus(
         commentId: string,
         userId: string,
         status: LikeStatus,
@@ -62,6 +62,7 @@ export class CommentLikesCommandRepository {
         await this.dataSource.query(query, queryParams);
     }
 
+
     async SQLgetLikeByCommentIdAndUserId({
         commentId,
         userId,
@@ -72,24 +73,24 @@ export class CommentLikesCommandRepository {
         const query = `
             SELECT status
             FROM comment_likes cl
-                     INNER JOIN comments c ON (cl.comment_id = c.id AND cl.user_id = c.user_id)
+                     INNER JOIN comments c ON (cl.comment_id = c.id)
                      INNER JOIN posts p ON (c.post_id = p.id)
                      INNER JOIN blogs b ON (p.blog_id = b.id)
-            WHERE cl.comment_id = ${commentId}
-              AND cl.user_id = ${userId}
+            WHERE cl.comment_id = $1
+              AND cl.user_id = $2
               AND c.deleted_at IS NULL
               AND p.deleted_at IS NULL
               AND b.deleted_at IS NULL;
         `;
 
         const [commentLikeStatus] =
-            await this.dataSource.query<{ status: string }[]>(query);
+            await this.dataSource.query<{ status: string }[]>(query, [commentId, userId]);
 
-        if (!commentLikeStatus || !isLikeStatus(commentLikeStatus)) {
+        if (!commentLikeStatus || !isLikeStatus(commentLikeStatus.status)) {
             return null;
         }
 
-        return commentLikeStatus;
+        return commentLikeStatus.status;
     }
 
 
