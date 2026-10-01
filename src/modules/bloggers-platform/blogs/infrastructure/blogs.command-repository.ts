@@ -15,42 +15,42 @@ export class BlogsCommandRepository {
         await blog.save();
     }
 
-    async SQLsave(blog: SQLBlog): Promise<void> {
-        const query = `
-            INSERT INTO blogs (id,
-                               name,
-                               description,
-                               website_url,
-                               is_membership,
-                               created_at,
-                               updated_at,
-                               deleted_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-            ON CONFLICT (id) DO
-            UPDATE SET
-                name = EXCLUDED.name,
-                description = EXCLUDED.description,
-                website_url = EXCLUDED.website_url,
-                is_membership = EXCLUDED.is_membership,
-                updated_at = EXCLUDED.updated_at,
-                deleted_at = EXCLUDED.deleted_at
-        `;
-
-        const queryParams = [
-            blog.id,
-            blog.name,
-            blog.description,
-            blog.websiteUrl,
-            blog.isMembership,
-            blog.createdAt,
-            blog.updatedAt,
-            blog.deletedAt,
-        ];
-
-        // console.log("query formed successfully");
-
-        await this.dataSource.query(query, queryParams);
-    }
+    // async SQLsave(blog: SQLBlog): Promise<void> {
+    //     const query = `
+    //         INSERT INTO blogs (id,
+    //                            name,
+    //                            description,
+    //                            website_url,
+    //                            is_membership,
+    //                            created_at,
+    //                            updated_at,
+    //                            deleted_at)
+    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    //         ON CONFLICT (id) DO
+    //         UPDATE SET
+    //             name = EXCLUDED.name,
+    //             description = EXCLUDED.description,
+    //             website_url = EXCLUDED.website_url,
+    //             is_membership = EXCLUDED.is_membership,
+    //             updated_at = EXCLUDED.updated_at,
+    //             deleted_at = EXCLUDED.deleted_at
+    //     `;
+    //
+    //     const queryParams = [
+    //         blog.id,
+    //         blog.name,
+    //         blog.description,
+    //         blog.websiteUrl,
+    //         blog.isMembership,
+    //         blog.createdAt,
+    //         blog.updatedAt,
+    //         blog.deletedAt,
+    //     ];
+    //
+    //     // console.log("query formed successfully");
+    //
+    //     await this.dataSource.query(query, queryParams);
+    // }
 
     async SQLsaveCreate(blog: SQLBlog): Promise<string> {
         // console.log('DEBUG BLOG DATES:', {

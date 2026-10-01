@@ -30,7 +30,7 @@ export class UpdateCommentByIdHandler implements ICommandHandler<UpdateCommentBy
         content,
     }: UpdateCommentById): Promise<void> {
         const comment =
-            await this.commentsCommandRepository.getCommentById(commentId);
+            await this.commentsCommandRepository.SQLfindCommentById(commentId);
 
         if (!comment) {
             throw new DomainException({
@@ -39,7 +39,7 @@ export class UpdateCommentByIdHandler implements ICommandHandler<UpdateCommentBy
             });
         }
 
-        if (userId !== comment.commentatorInfo.userId) {
+        if (userId !== comment.userId) {
             throw new DomainException({
                 code: DomainExceptionCode.Forbidden,
                 message: 'Forbidden to update comment',
@@ -48,7 +48,7 @@ export class UpdateCommentByIdHandler implements ICommandHandler<UpdateCommentBy
 
         const isContentChanged = comment.updateComment({ content });
         if (isContentChanged) {
-            await this.commentsCommandRepository.save(comment);
+            await this.commentsCommandRepository.SQLsaveUpdate(comment);
         }
     }
 }

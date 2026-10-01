@@ -23,7 +23,7 @@ export class UpdateBlogHandler implements ICommandHandler<UpdateBlogCommand>
     async execute(command: UpdateBlogCommand): Promise<void> {
         const { blogId, dto } = command;
 
-        // 1. Находим доменную сущность в CommandRepository
+        // находим запись и создаем(восстанавливаем) доменную сущность
         const blog = await this.blogsCommandRepository.SQLfindBlogById(blogId);
 
         if (!blog) {
@@ -33,10 +33,10 @@ export class UpdateBlogHandler implements ICommandHandler<UpdateBlogCommand>
             });
         }
 
-        // 2. Вызываем доменный метод у самой сущности (изменяет поля и updatedAt)
+        // вызываем доменный метод у самой сущности (изменяет поля и updatedAt)
         blog.updateBlog(dto);
 
-        // 3. Сохраняем измененную сущность обратно в БД
+        // сохраняем измененную сущность обратно в БД
         await this.blogsCommandRepository.SQLsaveUpdate(blog);
     }
 }

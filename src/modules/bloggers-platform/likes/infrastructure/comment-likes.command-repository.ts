@@ -50,8 +50,8 @@ export class CommentLikesCommandRepository {
             INSERT INTO comment_likes (comment_id, user_id, status)
             VALUES ($1, $2, $3)
             ON CONFLICT (comment_id,
-                user_id) DO UPDATE SET comment_id = EXCLUDED.comment_id,
-                                       user_id    = EXCLUDED.user_id,
+                user_id) DO UPDATE SET /*comment_id = EXCLUDED.comment_id,
+                                       user_id    = EXCLUDED.user_id,*/
                                        status     = EXCLUDED.status;
         `;
 

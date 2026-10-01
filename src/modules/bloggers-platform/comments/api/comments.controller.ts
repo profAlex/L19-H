@@ -52,6 +52,7 @@ export class CommentsController {
         console.log('CommentsController created');
     }
 
+    // return comment view by comment ID
     @ApiOperation({ summary: 'Get comment specified by id' })
     @ApiParam({ name: 'id' })
     // @UseGuards(JwtOptionalAuthGuard)
@@ -60,10 +61,10 @@ export class CommentsController {
         @Param('id') commentId: string,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<SQLCommentViewDto> {
-        const comment = await this.commentsQueryRepository.getCommentById(
-            commentId,
-            user.userId,
-        );
+        // const comment = await this.commentsQueryRepository.getCommentById(
+        //     commentId,
+        //     user.userId,
+        // );
 
         return this.queryBus.execute<CommentViewDto>(
             new GetCommentById(commentId, user.userId),
@@ -71,6 +72,7 @@ export class CommentsController {
     }
 
 
+    // make like/unlike/dislike/undislike for a particular comment by commentId
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a comment' })
     @ApiParam({ name: 'commentId' })
     @HttpCode(HttpStatus.NO_CONTENT)
@@ -89,8 +91,9 @@ export class CommentsController {
             }),
         );
     }
-    //*************************************
 
+
+    // update existing comment by comment ID
     @ApiOperation({ summary: 'Update comment specified by id' })
     @ApiParam({ name: 'commentId' })
     @UseGuards(JwtAuthGuard)
@@ -105,6 +108,9 @@ export class CommentsController {
             new UpdateCommentById(commentId, user.userId, body.content),
         );
     }
+
+    //*************************************
+
 
     @ApiOperation({ summary: 'Delete comment specified by id' })
     @ApiParam({ name: 'commentId' })

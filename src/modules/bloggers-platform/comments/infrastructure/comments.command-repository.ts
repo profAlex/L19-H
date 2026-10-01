@@ -13,91 +13,121 @@ import { CreateCommentApiInputDto } from '../api/input-dto/create-comment.api.in
 import { LikeStatus } from '../../../../core/enums/like-status.enum';
 import { DataSource } from 'typeorm';
 import { CounterDirection } from '../../likes/infrastructure/comment-likes.command-repository';
+import { SQLComment } from '../domain/sql-comment.entity';
+
+interface SQLCommentViewDto {
+    id: string;
+    content: string;
+    postId: string;
+    userId: string;
+    likesCount: number;
+    dislikesCount: number;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
+}
 
 @Injectable()
 export class CommentsCommandRepository {
     constructor(
         @InjectModel(Comment.name) private CommentModel: CommentModelType,
         private readonly dataSource: DataSource,
-
     ) {}
 
     async save(comment: CommentDocument): Promise<void> {
         await comment.save();
     }
 
-    // async SQLgetCimmentById(id: string): Promise<LikeStatus | null> {
-    //
-    //     const query = `
-    //         SELECT
-    //     `;
-    // }
+    async SQLsaveUpdate(comment: SQLComment): Promise<void> {
+        const query = `
+            UPDATE comments
+            SET content = $2,
+                updated_at = $3,
+                deleted_at = $4
+            WHERE id = $1;
+        `;
+        const queryParams = [
+            comment.id,
+            comment.content,
+            comment.updatedAt,
+            comment.deletedAt,
+        ];
 
+        await this.dataSource.query(query, queryParams);
+    }
 
     async SQLifCommentExists(commentId: string): Promise<boolean> {
         const query = `
-            SELECT EXISTS (
-                SELECT 1
-                FROM comments c
-                    INNER JOIN posts p ON c.post_id = p.id
-                    INNER JOIN blogs b ON (p.blog_id = b.id)
-                
-                WHERE c.id = $1
-                    AND c.deleted_at IS NULL
-                    AND p.deleted_at IS NULL
-                    AND b.deleted_at IS NULL) AS "exists";
+            SELECT EXISTS (SELECT 1
+                           FROM comments c
+                                    INNER JOIN posts p ON c.post_id = p.id
+                                    INNER JOIN blogs b ON (p.blog_id = b.id)
+
+                           WHERE c.id = $1
+                             AND c.deleted_at IS NULL
+                             AND p.deleted_at IS NULL
+                             AND b.deleted_at IS NULL) AS "exists";
         `;
 
-        const [queryRow] = await this.dataSource.query<{exists: boolean}[]>(query, [commentId]);
+        const [queryRow] = await this.dataSource.query<{ exists: boolean }[]>(
+            query,
+            [commentId],
+        );
 
         return queryRow?.exists ?? false; // на случай если queryRow вернется как undefined по каким-то причинам
     }
 
-
-    async SQLchangeCommentLikesCounter(commentId: string, direction: CounterDirection): Promise<void> {
+    async SQLchangeCommentLikesCounter(
+        commentId: string,
+        direction: CounterDirection,
+    ): Promise<void> {
         const query = `
             UPDATE public.comments
             SET likes_count = GREATEST(0, likes_count + $2)
-            WHERE id = $1 AND deleted_at IS NULL;
+            WHERE id = $1
+              AND deleted_at IS NULL;
         `;
 
         await this.dataSource.query(query, [commentId, direction]);
     }
 
-
-    async SQLchangeCommentDislikesCounter(commentId: string, direction: CounterDirection): Promise<void> {
+    async SQLchangeCommentDislikesCounter(
+        commentId: string,
+        direction: CounterDirection,
+    ): Promise<void> {
         const query = `
             UPDATE public.comments
             SET dislikes_count = GREATEST(0, dislikes_count + $2)
-            WHERE id = $1 AND deleted_at IS NULL;
+            WHERE id = $1
+              AND deleted_at IS NULL;
         `;
 
         await this.dataSource.query(query, [commentId, direction]);
     }
 
-
-    async SQLswitchToLikeCommentCounter(commentId: string): Promise<void>{
+    async SQLswitchToLikeCommentCounter(commentId: string): Promise<void> {
         const query = `
             UPDATE public.comments
             SET dislikes_count = GREATEST(0, dislikes_count - 1),
-                likes_count = GREATEST(0, likes_count + 1)
-            WHERE id = $1 AND deleted_at IS NULL;
+                likes_count    = GREATEST(0, likes_count + 1)
+            WHERE id = $1
+              AND deleted_at IS NULL;
         `;
 
         await this.dataSource.query(query, [commentId]);
     }
 
-    async SQLswitchToDislikeCommentCounter(commentId: string): Promise<void>{
+    async SQLswitchToDislikeCommentCounter(commentId: string): Promise<void> {
         const query = `
             UPDATE public.comments
-            SET likes_count = GREATEST(0, likes_count - 1),
+            SET likes_count    = GREATEST(0, likes_count - 1),
                 dislikes_count = GREATEST(0, dislikes_count + 1)
-            WHERE id = $1 AND deleted_at IS NULL;
+            WHERE id = $1
+              AND deleted_at IS NULL;
         `;
 
         await this.dataSource.query(query, [commentId]);
     }
-
 
     async getCommentById(id: string): Promise<CommentDocument | null> {
         return this.CommentModel.findOne({
@@ -109,6 +139,37 @@ export class CommentsCommandRepository {
         // но им не является. Вызов .exec() превращает его в полноценный нативный JavaScript Promise.
         // Это дает более чистые и понятные стек-трейсы ошибок (stack traces), если база данных начнет сбоить,
         // и исключает странные баги с типизацией в некоторых версиях TypeScript.
+    }
+
+    async SQLfindCommentById(commentId: string): Promise<SQLComment | null> {
+        const query = `
+            SELECT c.id,
+                   c.content,
+                   c.post_id AS "postId",
+                   c.user_id AS "userId",
+                   c.likes_count AS "likesCount",
+                   c.dislikes_count AS "dislikesCount",
+                   c.created_at AS "createdAt",
+                   c.updated_at AS "updatedAt",
+                   c.deleted_at AS "deletedAt"
+            FROM public.comments c
+                     INNER JOIN public.posts p ON c.post_id = p.id
+                     INNER JOIN public.blogs b ON p.blog_id = b.id
+            WHERE c.id = $1
+              AND c.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND b.deleted_at IS NULL;
+        `;
+
+        const [commentRow] = await this.dataSource.query<SQLCommentViewDto[]>(query, [
+            commentId,
+        ]);
+
+        if (!commentRow) {
+            return null;
+        }
+
+        return SQLComment.reconstructInstance(commentRow);
     }
 
     // методы для переключения счетчика лайков в комментарии
