@@ -104,7 +104,7 @@ export class UsersCommandRepository {
         return user;
     }
 
-    async SQLfindOrNotFoundFail(id: string): Promise<SQLUser> {
+    async SQLfindUserById(id: string): Promise<SQLUser | null> {
         const [userRow] = await this.dataSource.query<UserDbRow[]>(
             `
                 SELECT *
@@ -116,10 +116,7 @@ export class UsersCommandRepository {
         );
 
         if (!userRow) {
-            throw new DomainException({
-                code: DomainExceptionCode.UserNotFound,
-                message: 'User not found',
-            });
+            return null;
         }
 
         // Воссоздаем доменный объект из строки БД

@@ -109,9 +109,8 @@ export class CommentsController {
         );
     }
 
-    //*************************************
 
-
+    // delete comment specified by id
     @ApiOperation({ summary: 'Delete comment specified by id' })
     @ApiParam({ name: 'commentId' })
     @UseGuards(JwtAuthGuard)

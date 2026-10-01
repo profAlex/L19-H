@@ -27,7 +27,7 @@ export class DeleteCommentByIdHandler implements ICommandHandler<DeleteCommentBy
 
     async execute({ commentId, userId }: DeleteCommentById): Promise<void> {
         const comment =
-            await this.commentsCommandRepository.getCommentById(commentId);
+            await this.commentsCommandRepository.SQLfindCommentById(commentId);
 
         if (!comment) {
             throw new DomainException({
@@ -36,7 +36,7 @@ export class DeleteCommentByIdHandler implements ICommandHandler<DeleteCommentBy
             });
         }
 
-        if (userId !== comment.commentatorInfo.userId) {
+        if (userId !== comment.userId) {
             throw new DomainException({
                 code: DomainExceptionCode.Forbidden,
                 message: 'Forbidden to delete comment',
@@ -44,6 +44,6 @@ export class DeleteCommentByIdHandler implements ICommandHandler<DeleteCommentBy
         }
 
         comment.makeDeleted();
-        await this.commentsCommandRepository.save(comment);
+        await this.commentsCommandRepository.SQLsaveUpdate(comment);
     }
 }
