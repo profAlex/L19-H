@@ -1,7 +1,7 @@
 import { LikeStatus } from '../../../../../core/enums/like-status.enum';
 import { Comment } from '../../domain/comment.entity';
 import { FlattenMaps, Types } from 'mongoose';
-import { getCommentsViewDto } from '../../infrastructure/query/comments.query-repository';
+import { SQLcommentQueryRawDto } from '../../infrastructure/query/comments.query-repository';
 
 // export type CommentStorageModel = {
 //     _id: ObjectId;
@@ -142,7 +142,7 @@ export class SQLCommentViewDto {
     };
 
     static mapSQLRowToView(
-        raw: getCommentsViewDto
+        raw: SQLcommentQueryRawDto
     ): CommentViewDto {
         const dto = new SQLCommentViewDto();
 

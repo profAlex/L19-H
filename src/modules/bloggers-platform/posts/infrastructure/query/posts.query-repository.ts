@@ -51,6 +51,23 @@ export class PostsQueryRepository {
         return count > 0;
     }
 
+    async SQLifPostExists(id: string): Promise<boolean> {
+        const query = `
+            SELECT EXISTS (
+                SELECT 1
+                FROM public.posts p
+                    INNER JOIN public.blogs b ON p.blog_id = b.id
+                WHERE p.id = $1 
+                    AND p.deleted_at IS NULL
+                    AND b.deleted_at IS NULL
+            ) as "exists";
+        `;
+
+        const [resultRow] = await this.dataSource.query<{exists: boolean}[]>(query, [id]);
+
+        return resultRow?.exists ?? false;
+    }
+
     async getPostsByBlogId({
         userId,
         blogId,

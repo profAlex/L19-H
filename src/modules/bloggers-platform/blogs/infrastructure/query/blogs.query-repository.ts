@@ -124,23 +124,36 @@ export class BlogsQueryRepository {
     async SQLgetAllBlogs(
         query: GetBlogsQueryParams,
     ): Promise<PaginatedViewDto<SQLBlogViewDto>> {
-        const whereConditions: string[] = [`deleted_at IS NULL`];
+        // вспомонательная переменная для накопления условиий WHERE фильтрации: со старта отсекаем soft-deleted сущности
+        const whereConditions: string[] = [`blogs.deleted_at IS NULL`];
+
+        // вспомогательная переменная для хранения части условий в WHERE, которые присоединяются через OR
         const orConditions: string[] = [];
+
+        // эта переменная для формирования массива параметров, который подменяет $1, $2, $3
         const queryParams: any[] = [];
+
+        // переменная для счетчика, для формирования правильной последовательной нумерации параметров $1, $2, $3
         let indexParamCounter: number = 1;
 
+        // если в запрос передано условие поиска по имени (searchNameTerm) тогда его в качестве OR составляющей надо будет добваить в запрос WHERE
         if (query.searchNameTerm && query.searchNameTerm.trim() !== '') {
             orConditions.push(`name ILIKE $${indexParamCounter}`);
             queryParams.push(`%${query.searchNameTerm}%`);
             indexParamCounter += 1;
         }
 
+        // добавляем все OR условия одним общим блоком в скобках ( ... OR ... ) к WHERE блоку
         if (orConditions.length > 0) {
-            whereConditions.push(`(${orConditions.join(' OR ')})`); // хоть тут и один параметр максимум, но на случай если их количество изменится все равно сделаю join
+            whereConditions.push(`(${orConditions.join(' OR ')})`); // хоть тут и один параметр максимум (searchNameTerm), но на случай если их количество изменится все равно делаем join
         }
 
+        // соединяем предварительное условие
         const whereClause = whereConditions.join(' AND ');
 
+        // определяем "белый список" разрешенных полей для сортировки
+        // это защищает от SQL-инъекций, маппя camelCase из API в snake_case колонок БД
+        // для каждого типа сущности тут будет свой набор
         const auxSortingMapper: Record<string, string> = {
             name: 'name',
             description: 'description',
@@ -149,15 +162,22 @@ export class BlogsQueryRepository {
             isMembership: 'is_membership',
         };
 
+        // определяем имя колонки для ORDER BY. Если передан невалидный ключ — фоллбэк на 'created_at'
         const sortByColumn = auxSortingMapper[query.sortBy] || 'created_at';
+
+        // определяем направление сортировки приводим к верхнему регистру и проверяем на ASC, иначе DESC
         const sortDirection =
             query.sortDirection && query.sortDirection.toUpperCase() === 'ASC'
                 ? 'ASC'
                 : 'DESC';
 
+        // вычисляем смещение (сколько записей пропустить: (pageNumber - 1) * pageSize)
         const offset = query.calculateSkip();
+
+        // количество элементов на странице
         const limit = query.pageSize;
 
+        // формируем SQL-запрос для получения самих элементов
         const itemsQuery = `
             SELECT 
                 id,
@@ -173,12 +193,16 @@ export class BlogsQueryRepository {
             OFFSET $${indexParamCounter + 1}
         `;
 
+        // SQL-запрос для получения общего количества записей (без LIMIT/OFFSET),
+        // чтобы рассчитать общее количество страниц.
+        // ::int принудительно приводит bigint из Postgres к обыкновенному number в JS
         const countQuery = `
             SELECT COUNT(*) ::int AS "totalCount"
             FROM blogs
             WHERE ${whereClause}
         `;
 
+        // оба запроса можно запусить параллельно с помощью Promise.all
         const [blogsRows, countResult] = await Promise.all([
             this.dataSource.query<RawBlogData[]>(itemsQuery, [
                 ...queryParams,
@@ -191,6 +215,7 @@ export class BlogsQueryRepository {
             ),
         ]);
 
+        // преобразуем сырые строки из базы (snake_case) в DTO для клиентов (camelCase) и в требуемой структуре
         const items = blogsRows.map(SQLBlogViewDto.mapFromDbRaw);
         const totalCount = countResult[0]?.totalCount ?? 0;
 

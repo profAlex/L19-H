@@ -39,7 +39,6 @@ export class UsersCommandRepository {
         // console.log("<----------------TEST HERE 6");
     }
 
-    //
 
     /* language=PostgreSQL */
     async SQLsave(user: SQLUser): Promise<void> {

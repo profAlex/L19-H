@@ -84,14 +84,40 @@ export class PostsController {
     }
 
 
+    // Returns comments for specified post
+    @ApiOperation({ summary: 'Returns comments for specified post' })
+    @ApiParam({ name: 'postId' }) //для сваггера
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get(':postId/comments')
+    async getCommentsByPostId(
+        @Param('postId') postId: string,
+        @Query() query: GetCommentsQueryParams,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<PaginatedViewDto<CommentViewDto>> {
+        return this.queryBus.execute<GetCommentsForSpecificPostId>(
+            new GetCommentsForSpecificPostId(postId, query, user?.userId),
+        );
+    }
     //**************************************************************************
     //**************************************************************************
 
 
 
 
-
-
+    // Create new comment
+    @ApiOperation({ summary: 'Create new comment' })
+    @ApiParam({ name: 'postId' })
+    @UseGuards(JwtAuthGuard)
+    @Post(':postId/comments')
+    async createNewComment(
+        @Param('postId') postId: string,
+        @Body() body: CreateCommentApiInputDto,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<CommentViewDto> {
+        return this.commandBus.execute<CreateNewComment>(
+            new CreateNewComment(postId, body, user.userId),
+        );
+    }
 
 
 
@@ -115,35 +141,9 @@ export class PostsController {
         );
     }
 
-    // Returns comments for specified post
-    @ApiOperation({ summary: 'Returns comments for specified post' })
-    @ApiParam({ name: 'postId' }) //для сваггера
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get(':postId/comments')
-    async getCommentsByPostId(
-        @Param('postId') postId: string,
-        @Query() query: GetCommentsQueryParams,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<PaginatedViewDto<CommentViewDto>> {
-        return this.queryBus.execute<GetCommentsForSpecificPostId>(
-            new GetCommentsForSpecificPostId(postId, query, user?.userId),
-        );
-    }
+    //**************************************************************************
+    //**************************************************************************
 
-    // Create new comment
-    @ApiOperation({ summary: 'Create new comment' })
-    @ApiParam({ name: 'postId' })
-    @UseGuards(JwtAuthGuard)
-    @Post(':postId/comments')
-    async createNewComment(
-        @Param('postId') postId: string,
-        @Body() body: CreateCommentApiInputDto,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<CommentViewDto> {
-        return this.commandBus.execute<CreateNewComment>(
-            new CreateNewComment(postId, body, user.userId),
-        );
-    }
 
 
 

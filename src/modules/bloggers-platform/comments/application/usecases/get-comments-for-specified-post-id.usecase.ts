@@ -34,13 +34,13 @@ export class GetCommentsForSpecificPostIdHandler implements IQueryHandler<GetCom
 
     async execute({ postId, query, userId }: GetCommentsForSpecificPostId) {
         // const { postId, query, userId } = busQueryDto;
-        if (!(await this.postsQueryRepository.ifPostExists(postId))) {
+        if (!(await this.postsQueryRepository.SQLifPostExists(postId))) {
             throw new DomainException({
-                code: DomainExceptionCode.CommentNotFound,
+                code: DomainExceptionCode.PostNotFound,
                 message: 'Post not found',
             });
         }
-        return await this.commentsQueryRepository.getCommentsByPostId({
+        return await this.commentsQueryRepository.SQLgetCommentsByPostId({
             postId,
             query,
             userId,
