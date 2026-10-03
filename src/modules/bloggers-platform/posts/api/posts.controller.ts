@@ -71,7 +71,7 @@ export class PostsController {
 
     // Returns all posts
     @ApiOperation({ summary: 'Returns all posts' })
-    // @UseGuards(JwtOptionalAuthGuard)
+    @UseGuards(JwtOptionalAuthGuard)
     @Get()
     @HttpCode(HttpStatus.OK)
     async getAllPosts(
@@ -98,6 +98,28 @@ export class PostsController {
             new GetCommentsForSpecificPostId(postId, query, user?.userId),
         );
     }
+
+
+    // Make like/unlike/dislike/undislike operation
+    @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a post' })
+    @ApiParam({ name: 'postId' })
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @UseGuards(JwtAuthGuard)
+    @Put(':postId/like-status')
+    async changePostLikeStatus(
+        @Param('postId') postId: string,
+        @Body() body: ChangePostLikeStatusInputDto,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ) {
+        return this.commandBus.execute<ChangePostLikeStatus>(
+            new ChangePostLikeStatus({
+                postId: postId,
+                userId: user.userId,
+                newLikeStatus: body.likeStatus,
+            }),
+        );
+    }
+
     //**************************************************************************
     //**************************************************************************
 
@@ -121,25 +143,6 @@ export class PostsController {
 
 
 
-    // Make like/unlike/dislike/undislike operation
-    @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a post' })
-    @ApiParam({ name: 'postId' })
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @UseGuards(JwtAuthGuard)
-    @Put(':postId/like-status')
-    async changePostLikeStatus(
-        @Param('postId') postId: string,
-        @Body() body: ChangePostLikeStatusInputDto,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ) {
-        return this.commandBus.execute<ChangePostLikeStatus>(
-            new ChangePostLikeStatus({
-                postId: postId,
-                userId: user.userId,
-                newLikeStatus: body.likeStatus,
-            }),
-        );
-    }
 
     //**************************************************************************
     //**************************************************************************

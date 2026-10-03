@@ -24,17 +24,14 @@ export class ChangePostLikeStatusHandler implements ICommandHandler<ChangePostLi
     constructor(
         @InjectModel(PostLike.name) private PostLikeModel: PostLikeModelType,
         private postLikesCommandRepository: PostLikesCommandRepository,
-        private postLikesQueryRepository: PostLikesQueryRepository,
         private postsCommandRepository: PostsCommandRepository,
-        private usersExternalQueryRepository: UsersExternalQueryRepository,
     ) {}
 
     async execute({ dto }: ChangePostLikeStatus): Promise<void> {
         const { postId, userId, newLikeStatus } = dto;
 
-        // проверяем что пост, которому пользователь меняет лайк-статус, существует и сразу возращаем ссылку для работы
-        const post =
-            await this.postsCommandRepository.findSinglePostById(postId);
+        // проверяем что пост, которому пользователь меняет лайк-статус, существует
+        const post = this.postsCommandRepository.SQLifPostExists(postId);
         if (!post) {
             throw new DomainException({
                 code: DomainExceptionCode.PostNotFound,
@@ -42,121 +39,60 @@ export class ChangePostLikeStatusHandler implements ICommandHandler<ChangePostLi
             });
         }
 
-        // проверяем наличие реакции на пост в коллекции пост-лайков и если он существует сразу возвращаем документ для
-        const previousReactionStatus =
-            await this.postLikesCommandRepository.findSinglePostLikeByPostIdAndUserId(
-                { postId, userId },
+        // проверяем наличие реакции на пост
+        const currentLikeStatus =
+            await this.postLikesCommandRepository.SQLgetLikeByCommentIdAndUserId(
+                postId, userId
             );
 
-        // находим данные юзера, который меняет реакицю, нам нужен будет от него userLogin
-        const user =
-            await this.usersExternalQueryRepository.getByIdOrNotFoundFail(
-                userId,
-            );
 
         // НАЧАЛО ПРОВЕРОК
-        // если прежней реакции не найдено и новая реакция не None
-        if (previousReactionStatus === null && newLikeStatus !== 'None') {
+        // если прежней реакции не найдено и новая реакция не None, значит реакция добавляется впервые
+        // и надо будет просто увеличить счетчик лайков или дислайков и добавить новую запись
+        if (currentLikeStatus === null && newLikeStatus !== 'None') {
             // создаем новый лайк в базе
-            const newLikeDocument = this.PostLikeModel.createInstance({
-                postId: postId,
-                userId: userId,
-                userLogin: user.login,
-            });
+            await this.postLikesCommandRepository.SQLupdateLikeStatus(postId, userId, newLikeStatus);
 
-            newLikeDocument.likeStatus = newLikeStatus;
-            await this.postLikesCommandRepository.save(newLikeDocument);
-
-            // добавляем реакцию в счетчик реакций в базе постов
-            const ifAddReactionSuccessfull =
-                await this.postsCommandRepository.addPostReaction({
-                    sentPostId: postId,
-                    newStatus: newLikeStatus,
-                });
-
-            if (!ifAddReactionSuccessfull) {
-                throw new DomainException({
-                    code: DomainExceptionCode.PostNotFound,
-                    message: `Post not found`,
-                });
+            // меняем счетчик
+            if (newLikeStatus === 'Like') {
+                await this.postsCommandRepository.SQLchangeCommentLikesCounter(postId, 1);
+            }
+            else if (newLikeStatus === 'Dislike') {
+                await this.postsCommandRepository.SQLchangeCommentDislikesCounter(postId, 1);
             }
         }
         // если прежняя реакция найдена и она не равна вновь переданной
         else if (
-            previousReactionStatus !== null &&
-            previousReactionStatus.likeStatus !== newLikeStatus
+            currentLikeStatus !== null &&
+            currentLikeStatus !== newLikeStatus
         ) {
-            // дополнительное условие - если передали лайк = none - удалить запись из лайк репозитория,
-            // не забыть вызвать nullifyReaction для корректировки общего счетчика лайков-дизлайков
-
-            // если новая реакция это None, тогда надо удалить запись лайка в репозитории лайков и сбросить реакцию в комменте
+            // если новая реакция это None, тогда надо удалить запись лайка в репозитории лайков и сбросить реакцию в посте
             if (newLikeStatus === 'None') {
-                // запоминаем какая реакция была ранее проставлена юзером
-                const previousReaction = previousReactionStatus.likeStatus;
-
                 // выставляем статус лайка (запись в базе) likeStatus в None, не удаляя физически
-                const isStatusChanged = previousReactionStatus.updateLikeStatus(
-                    { likeStatus: newLikeStatus },
-                );
-
-                if (isStatusChanged) {
-                    await this.postLikesCommandRepository.save(
-                        previousReactionStatus,
-                    );
-                }
+                await this.postLikesCommandRepository.SQLupdateLikeStatus(postId, userId, newLikeStatus);
 
                 // делаем декремент счетчика лайка или дизлайка
-                const ifNullifyingReactionSuccessfull =
-                    await this.postsCommandRepository.nullifyPostReaction({
-                        sentPostId: postId,
-                        oldStatus: previousReaction,
-                    });
-
-                if (!ifNullifyingReactionSuccessfull) {
-                    throw new DomainException({
-                        code: DomainExceptionCode.PostNotFound,
-                        message: `Post not found`,
-                    });
+                if(currentLikeStatus === 'Like'){
+                    await this.postsCommandRepository.SQLchangeCommentLikesCounter(postId, -1);
                 }
+                else if (currentLikeStatus === 'Dislike') {
+                    await this.postsCommandRepository.SQLchangeCommentDislikesCounter(postId, -1);
+                }
+
             } else {
                 // ветка на тот случай когда мы меняем(свитчим) реакцию на Like или Dislike (sentLike === "Like" или "Dislike")
                 // меняем реакцию в коллекции лайков на новую
-                const isStatusChanged = previousReactionStatus.updateLikeStatus(
-                    { likeStatus: newLikeStatus },
-                );
+                await this.postLikesCommandRepository.SQLupdateLikeStatus(postId, userId, newLikeStatus);
 
-                // сохраняем
-                if (isStatusChanged) {
-                    await this.postLikesCommandRepository.save(
-                        previousReactionStatus,
-                    );
+
+                // меняем каунтер в посте
+                if(newLikeStatus === 'Like') {
+                    await this.postsCommandRepository.SQLswitchToLikePostCounter(postId);
                 }
-
-                // меняем реакцию в коллекции постов на новую
-                const ifSwitchReactionSuccessfull =
-                    await this.postsCommandRepository.switchPostReaction({
-                        sentPostId: postId,
-                        newStatus: newLikeStatus,
-                    });
-
-                if (!ifSwitchReactionSuccessfull) {
-                    throw new DomainException({
-                        code: DomainExceptionCode.PostNotFound,
-                        message: `Post not found`,
-                    });
+                else if(newLikeStatus === 'Dislike') {
+                    await this.postsCommandRepository.SQLswitchToDislikePostCounter(postId);
                 }
             }
         }
-
-        // реакция изменена удачно
-        // теперь обновляем последние три лайка в посте, вытягивая инфу про крайние три лайка из базы лайков
-        const refreshLastLikesstatus =
-            await this.postLikesQueryRepository.getLatestLikesForPost(postId);
-
-        // обновляем пост
-        post.updateNewestLikes(refreshLastLikesstatus);
-
-        // сохраняем изменения в посте
-        await this.postsCommandRepository.save(post);
     }
 }

@@ -24,11 +24,8 @@ export class ChangeCommentLikeStatus extends Command<void> {
 export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCommentLikeStatus> {
     constructor(
         @InjectModel(CommentLike.name)
-        private CommentLikeModel: CommentLikeModelType,
         private commentLikesCommandRepository: CommentLikesCommandRepository,
-        private commentLikesQueryRepository: CommentLikesQueryRepository,
         private commentsCommandRepository: CommentsCommandRepository,
-        private usersExternalQueryRepository: UsersExternalQueryRepository,
     ) {}
 
     async execute({ dto }: ChangeCommentLikeStatus): Promise<void> {
