@@ -51,55 +51,6 @@ export class PostsController {
         console.log('PostsController created');
     }
 
-
-
-    // Return post by id
-    @ApiOperation({ summary: 'Return post by id' })
-    @ApiParam({ name: 'id' })
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get(':id')
-    @HttpCode(HttpStatus.OK)
-    async getPostById(
-        @Param('id') postId: string,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<PostViewDto> {
-        return this.queryBus.execute<PostViewDto>(
-            new GetPostById(postId, user?.userId),
-        );
-    }
-
-
-    // Returns all posts
-    @ApiOperation({ summary: 'Returns all posts' })
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get()
-    @HttpCode(HttpStatus.OK)
-    async getAllPosts(
-        @Query() query: GetPostsQueryParams,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<PaginatedViewDto<PostViewDto>> {
-        return this.queryBus.execute<PaginatedViewDto<PostViewDto>>(
-            new GetAllPosts(query, user?.userId),
-        );
-    }
-
-
-    // Returns comments for specified post
-    @ApiOperation({ summary: 'Returns comments for specified post' })
-    @ApiParam({ name: 'postId' }) //для сваггера
-    @UseGuards(JwtOptionalAuthGuard)
-    @Get(':postId/comments')
-    async getCommentsByPostId(
-        @Param('postId') postId: string,
-        @Query() query: GetCommentsQueryParams,
-        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
-    ): Promise<PaginatedViewDto<CommentViewDto>> {
-        return this.queryBus.execute<GetCommentsForSpecificPostId>(
-            new GetCommentsForSpecificPostId(postId, query, user?.userId),
-        );
-    }
-
-
     // Make like/unlike/dislike/undislike operation
     @ApiOperation({ summary: 'Make like/unlike/dislike/undislike a post' })
     @ApiParam({ name: 'postId' })
@@ -121,6 +72,22 @@ export class PostsController {
     }
 
 
+    // Returns comments for specified post
+    @ApiOperation({ summary: 'Returns comments for specified post' })
+    @ApiParam({ name: 'postId' }) //для сваггера
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get(':postId/comments')
+    async getCommentsByPostId(
+        @Param('postId') postId: string,
+        @Query() query: GetCommentsQueryParams,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<PaginatedViewDto<CommentViewDto>> {
+        return this.queryBus.execute<GetCommentsForSpecificPostId>(
+            new GetCommentsForSpecificPostId(postId, query, user?.userId),
+        );
+    }
+
+
     // Create new comment
     @ApiOperation({ summary: 'Create new comment' })
     @ApiParam({ name: 'postId' })
@@ -135,6 +102,39 @@ export class PostsController {
             new CreateNewComment(postId, body, user.userId),
         );
     }
+
+
+    // Returns all posts
+    @ApiOperation({ summary: 'Returns all posts' })
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get()
+    @HttpCode(HttpStatus.OK)
+    async getAllPosts(
+        @Query() query: GetPostsQueryParams,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<PaginatedViewDto<PostViewDto>> {
+        return this.queryBus.execute<PaginatedViewDto<PostViewDto>>(
+            new GetAllPosts(query, user?.userId),
+        );
+    }
+
+
+    // Return post by id
+    @ApiOperation({ summary: 'Return post by id' })
+    @ApiParam({ name: 'id' })
+    @UseGuards(JwtOptionalAuthGuard)
+    @Get(':id')
+    @HttpCode(HttpStatus.OK)
+    async getPostById(
+        @Param('id') postId: string,
+        @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
+    ): Promise<PostViewDto> {
+        return this.queryBus.execute<PostViewDto>(
+            new GetPostById(postId, user?.userId),
+        );
+    }
+
+
 
     //**************************************************************************
     //**************************************************************************
