@@ -9,6 +9,8 @@ import { UserAccessTokenContextDto } from '../../../../authorisation/guards/dto/
 import { PostsQueryRepository } from '../../../posts/infrastructure/query/posts.query-repository';
 import { DomainException } from '../../../../../core/exceptions/domain-exceptions';
 import { DomainExceptionCode } from '../../../../../core/exceptions/domain-exception-codes';
+import { SQLComment } from '../../domain/sql-comment.entity';
+import { CommentsQueryRepository } from '../../infrastructure/query/comments.query-repository';
 
 export class CreateNewComment extends Command<CommentViewDto> {
     constructor(
@@ -27,6 +29,7 @@ export class CreateNewCommentHandler implements ICommandHandler<CreateNewComment
         private postsQueryRepository: PostsQueryRepository,
         @InjectModel(Comment.name) private CommentModel: CommentModelType,
         private commentsCommandRepository: CommentsCommandRepository,
+        private commentsQueryRepository: CommentsQueryRepository,
     ) {}
 
     async execute({
@@ -34,26 +37,27 @@ export class CreateNewCommentHandler implements ICommandHandler<CreateNewComment
         body,
         userId,
     }: CreateNewComment): Promise<CommentViewDto> {
-        const user =
-            await this.usersExternalQueryRepository.getByIdOrNotFoundFail(
-                userId,
-            );
 
-        if (!(await this.postsQueryRepository.ifPostExists(postId))) {
+        if (!(await this.postsQueryRepository.SQLifPostExists(postId))) {
             throw new DomainException({
                 code: DomainExceptionCode.PostNotFound,
                 message: 'Post not found',
             });
         }
 
-        const comment = this.CommentModel.createInstance({
-            relatedPostId: postId,
-            content: body.content,
-            commentatorInfo: { userId: user.id, userLogin: user.login },
-        });
+        const comment = SQLComment.createInstance({content: body.content, postId, userId});
 
-        await this.commentsCommandRepository.save(comment);
+        const commentId = await this.commentsCommandRepository.SQLsaveCreate(comment);
 
-        return CommentViewDto.mapToView(comment);
+        const commentView = await this.commentsQueryRepository.SQLgetCommentById(commentId);
+
+        if (!commentView) {
+            throw new DomainException({
+                code: DomainExceptionCode.CommentNotFound,
+                message: ' Comment not found: apparently newly formed comment couldn\'t be found in database!',
+            });
+        }
+
+        return commentView;
     }
 }

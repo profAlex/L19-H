@@ -41,7 +41,7 @@ export class CommentsCommandRepository {
     async SQLsaveUpdate(comment: SQLComment): Promise<void> {
         const query = `
             UPDATE comments
-            SET content = $2,
+            SET content    = $2,
                 updated_at = $3,
                 deleted_at = $4
             WHERE id = $1;
@@ -55,6 +55,31 @@ export class CommentsCommandRepository {
 
         await this.dataSource.query(query, queryParams);
     }
+
+    async SQLsaveCreate(comment: SQLComment): Promise<string> {
+        const query = `
+            INSERT INTO comments (content, post_id, user_id, likes_count, dislikes_count, created_at, updated_at,
+                                  deleted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id;
+        `;
+
+        const queryParams = [
+            comment.content,
+            comment.postId,
+            comment.userId,
+            comment.likesCount,
+            comment.dislikesCount,
+            comment.createdAt,
+            comment.updatedAt,
+            comment.deletedAt,
+        ];
+
+        const [result] = await this.dataSource.query<{id:string}[]>(query, queryParams);
+
+        return result.id;
+    }
+
 
     async SQLifCommentExists(commentId: string): Promise<boolean> {
         const query = `
@@ -145,13 +170,13 @@ export class CommentsCommandRepository {
         const query = `
             SELECT c.id,
                    c.content,
-                   c.post_id AS "postId",
-                   c.user_id AS "userId",
-                   c.likes_count AS "likesCount",
+                   c.post_id        AS "postId",
+                   c.user_id        AS "userId",
+                   c.likes_count    AS "likesCount",
                    c.dislikes_count AS "dislikesCount",
-                   c.created_at AS "createdAt",
-                   c.updated_at AS "updatedAt",
-                   c.deleted_at AS "deletedAt"
+                   c.created_at     AS "createdAt",
+                   c.updated_at     AS "updatedAt",
+                   c.deleted_at     AS "deletedAt"
             FROM public.comments c
                      INNER JOIN public.posts p ON c.post_id = p.id
                      INNER JOIN public.blogs b ON p.blog_id = b.id
@@ -161,9 +186,10 @@ export class CommentsCommandRepository {
               AND b.deleted_at IS NULL;
         `;
 
-        const [commentRow] = await this.dataSource.query<SQLCommentViewDto[]>(query, [
-            commentId,
-        ]);
+        const [commentRow] = await this.dataSource.query<SQLCommentViewDto[]>(
+            query,
+            [commentId],
+        );
 
         if (!commentRow) {
             return null;
