@@ -45,11 +45,14 @@ export class CreateNewCommentHandler implements ICommandHandler<CreateNewComment
             });
         }
 
+        console.warn('<---- userId to be written inside new comment: ', userId);
         const comment = SQLComment.createInstance({content: body.content, postId, userId});
 
         const commentId = await this.commentsCommandRepository.SQLsaveCreate(comment);
 
         const commentView = await this.commentsQueryRepository.SQLgetCommentById(commentId);
+        console.warn('<---- userId written inside new comment (commentView?.commentatorInfo.userId): ', commentView?.commentatorInfo?.userId);
+
 
         if (!commentView) {
             throw new DomainException({

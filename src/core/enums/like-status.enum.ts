@@ -3,9 +3,3 @@ export enum LikeStatus {
     Like = 'Like',
     Dislike = 'Dislike'
 }
-
-export enum LikeStatus1 {
-    1,
-    2,
-    3
-}

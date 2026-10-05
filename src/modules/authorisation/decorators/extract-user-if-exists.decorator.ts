@@ -3,12 +3,16 @@ import { UserAccessTokenContextDto } from '../guards/dto/user-access-token-conte
 
 export const ExtractUserIfExistsFromRequest = createParamDecorator(
     (data: unknown, context: ExecutionContext): UserAccessTokenContextDto | null => {
+
+        // извлекаем HTTP-контекст из общего ExecutionContext
         const request = context.switchToHttp().getRequest();
 
+        // если в request.user пусто, то возвращаем null (если в guard-е не обработан этот сценарий)
         if (!request.user) {
             return null;
         }
 
+        // иначе возвращаем значение юзера
         return request.user;
     },
 );

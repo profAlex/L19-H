@@ -67,7 +67,7 @@ export class CommentsController {
         // );
 
         return this.queryBus.execute<CommentViewDto>(
-            new GetCommentById(commentId, user.userId),
+            new GetCommentById(commentId, user?.userId),
         );
     }
 
@@ -120,6 +120,8 @@ export class CommentsController {
         @Param('commentId') commentId: string,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<void> {
+        console.warn('...Entered \'deleteCommentById\' method, route: \'DELETE /comments/:commentId\'');
+
         return this.commandBus.execute<DeleteCommentById>(
             new DeleteCommentById(commentId, user.userId),
         );

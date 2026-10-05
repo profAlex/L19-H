@@ -30,10 +30,12 @@ export class GetCommentByIdHandler implements IQueryHandler<GetCommentById> {
 
         if (!commentView) {
             // throw new NotFoundException("Comment not found!");
+            // console.warn("<------- GOT ERROR HERE");
             throw new DomainException({
                 code: DomainExceptionCode.CommentNotFound,
                 message: 'Comment not found!',
             });
+
         }
 
         return commentView;

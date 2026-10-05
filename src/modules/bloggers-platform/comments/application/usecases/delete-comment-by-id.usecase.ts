@@ -29,6 +29,9 @@ export class DeleteCommentByIdHandler implements ICommandHandler<DeleteCommentBy
         const comment =
             await this.commentsCommandRepository.SQLfindCommentById(commentId);
 
+        console.warn('<------- userId to be deleted: ', comment?.userId);
+        console.warn('<------- userId which requested deletion: ', userId);
+
         if (!comment) {
             throw new DomainException({
                 code: DomainExceptionCode.CommentNotFound,

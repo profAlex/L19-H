@@ -15,7 +15,7 @@ import { DataSource } from 'typeorm';
 import { CounterDirection } from '../../likes/infrastructure/comment-likes.command-repository';
 import { SQLComment } from '../domain/sql-comment.entity';
 
-interface SQLCommentViewDto {
+export interface SQLRawCommentDto {
     id: string;
     content: string;
     postId: string;
@@ -186,10 +186,12 @@ export class CommentsCommandRepository {
               AND b.deleted_at IS NULL;
         `;
 
-        const [commentRow] = await this.dataSource.query<SQLCommentViewDto[]>(
+        const [commentRow] = await this.dataSource.query<SQLRawCommentDto[]>(
             query,
             [commentId],
         );
+
+        console.warn('<-- userId inside postgres row (SQLfindCommentById): ', commentRow?.userId);
 
         if (!commentRow) {
             return null;

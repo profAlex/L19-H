@@ -98,6 +98,8 @@ export class PostsController {
         @Body() body: CreateCommentApiInputDto,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<CommentViewDto> {
+        console.warn('...Entered \'createNewComment\' method, route: \'POST /posts/:postId/comments\'');
+
         return this.commandBus.execute<CreateNewComment>(
             new CreateNewComment(postId, body, user.userId),
         );

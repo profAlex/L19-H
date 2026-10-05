@@ -16,12 +16,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             secretOrKey: appConfig.ACCESS_TOKEN_SECRET,
-            // secretOrKey: envConfig.accessTokenSecret, //TODO: move to env. will be in the following lessons
         })
     }
 
     async validate(userData: UserAccessTokenContextDto): Promise<UserAccessTokenContextDto> {
-        console.log("USER_ID: ", userData.userId);
+        // console.warn("USER_ID: ", userData.userId);
         return userData;
     }
 }

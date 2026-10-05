@@ -1,3 +1,4 @@
+import { SQLRawCommentDto } from '../infrastructure/comments.command-repository';
 
 
 export interface SQLCreateCommentDomainDto {
@@ -39,20 +40,20 @@ export class SQLComment {
     }
 
 
-    static reconstructInstance(raw: any): SQLComment {
+    static reconstructInstance(raw: SQLRawCommentDto): SQLComment {
         const comment = new SQLComment();
 
         comment.id = raw.id;
         comment.content = raw.content;
-        comment.postId = raw.post_id;
-        comment.userId = raw.user_id;
-        comment.likesCount = Number(raw.likes_count ?? raw.likesCount ?? 0);
-        comment.dislikesCount = Number(raw.dislikes_count ?? raw.dislikesCount ?? 0);
+        comment.postId = raw.postId;
+        comment.userId = raw.userId;
+        comment.likesCount = Number(raw.likesCount ?? raw.likesCount ?? 0);
+        comment.dislikesCount = Number(raw.dislikesCount ?? raw.dislikesCount ?? 0);
 
         // Валидация дат и защита от new Date(null)
-        comment.createdAt = raw.created_at ? new Date(raw.created_at) : new Date();
-        comment.updatedAt = raw.updated_at ? new Date(raw.updated_at) : new Date();
-        comment.deletedAt = raw.deleted_at ? new Date(raw.deleted_at) : null;
+        comment.createdAt = raw.createdAt ? new Date(raw.createdAt) : new Date();
+        comment.updatedAt = raw.updatedAt ? new Date(raw.updatedAt) : new Date();
+        comment.deletedAt = raw.deletedAt ? new Date(raw.deletedAt) : null;
 
         return comment;
     }
