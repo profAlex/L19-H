@@ -29,6 +29,8 @@ export class UpdateCommentByIdHandler implements ICommandHandler<UpdateCommentBy
         userId,
         content,
     }: UpdateCommentById): Promise<void> {
+        // console.warn('<---- commentId to be found: ', commentId);
+
         const comment =
             await this.commentsCommandRepository.SQLfindCommentById(commentId);
 
@@ -38,6 +40,10 @@ export class UpdateCommentByIdHandler implements ICommandHandler<UpdateCommentBy
                 message: 'Comment not found',
             });
         }
+
+        // console.warn('<---- commentId which was found: ', comment?.id);
+
+
 
         if (userId !== comment.userId) {
             throw new DomainException({

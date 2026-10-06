@@ -86,8 +86,7 @@ export class CommentsCommandRepository {
             SELECT EXISTS (SELECT 1
                            FROM comments c
                                     INNER JOIN posts p ON c.post_id = p.id
-                                    INNER JOIN blogs b ON (p.blog_id = b.id)
-
+                                    INNER JOIN blogs b ON p.blog_id = b.id
                            WHERE c.id = $1
                              AND c.deleted_at IS NULL
                              AND p.deleted_at IS NULL
@@ -96,7 +95,7 @@ export class CommentsCommandRepository {
 
         const [queryRow] = await this.dataSource.query<{ exists: boolean }[]>(
             query,
-            [commentId],
+            [commentId]
         );
 
         return queryRow?.exists ?? false; // на случай если queryRow вернется как undefined по каким-то причинам
@@ -191,7 +190,7 @@ export class CommentsCommandRepository {
             [commentId],
         );
 
-        console.warn('<-- userId inside postgres row (SQLfindCommentById): ', commentRow?.userId);
+        // console.warn('<-- userId inside postgres row (SQLfindCommentById): ', commentRow?.userId);
 
         if (!commentRow) {
             return null;

@@ -37,27 +37,65 @@ export class PostLikesCommandRepository {
         });
     }
 
-    async SQLgetLikeByCommentIdAndUserId(userId:string, postId:string): Promise<LikeStatus | null> {
+    // async SQLgetLikeByPostIdAndUserId(
+    //     userId: string,
+    //     postId: string,
+    // ): Promise<LikeStatus | null> {
+    //     const query = `
+    //         SELECT pl.status AS "status"
+    //         FROM post_likes pl
+    //                  INNER JOIN posts p ON p.id = pl.post_id
+    //                  INNER JOIN blogs b ON b.id = p.blog_id
+    //         WHERE pl.post_id = $1
+    //           AND pl.user_id = $2
+    //           AND p.deleted_at IS NULL
+    //           AND b.deleted_at IS NULL;
+    //     `;
+    //
+    //     const [postLikeStatus] = await this.dataSource.query<
+    //         { status: string }[]
+    //     >(query, [postId, userId]);
+    //
+    //     console.warn('<-- postLikeStatus.status value is: ', postLikeStatus?.status);
+    //
+    //     if (!postLikeStatus || !isLikeStatus(postLikeStatus?.status)) {
+    //         return null;
+    //     }
+    //
+    //     return postLikeStatus.status;
+    // }
+
+
+    async SQLgetLikeByPostIdAndUserId(
+        postId: string,
+        userId: string,
+    ): Promise<LikeStatus | null> {
         const query = `
-            SELECT 
-                pl.status AS "status"
-            FROM post_likes pl 
-                INNER JOIN posts p ON p.id = $1
-                INNER JOIN blogs b ON b.id = p.blog_id
-            WHERE 
-                pl.post_id = $1 AND pl.user_id = $2
-                AND p.deleted_at IS NULL
-                AND b.deleted_at IS NULL;
+            SELECT pl.status AS "status"
+            FROM post_likes pl
+                     INNER JOIN posts p ON p.id = pl.post_id
+                     INNER JOIN blogs b ON b.id = p.blog_id
+            WHERE pl.post_id = $1
+              AND pl.user_id = $2
+              AND p.deleted_at IS NULL
+              AND b.deleted_at IS NULL
+            LIMIT 1;
         `;
 
-        const [postLikeStatus] = await this.dataSource.query<{status:string}[]>(query, [postId, userId]);
+        const [result] = await this.dataSource.query<{ status: string }[]>(query, [
+            postId,
+            userId,
+        ]);
 
-        if (!postLikeStatus || !isLikeStatus(postLikeStatus.status)) {
+        console.warn('<-- postLikeStatus.status value is: ', result?.status);
+
+        if (!result || !isLikeStatus(result.status)) {
             return null;
         }
 
-        return postLikeStatus.status;
+        return result.status;
     }
+
 
     async SQLupdateLikeStatus(
         postId: string,
@@ -70,7 +108,8 @@ export class PostLikesCommandRepository {
             ON CONFLICT (post_id,
                 user_id) DO UPDATE SET /*comment_id = EXCLUDED.comment_id,
                                        user_id    = EXCLUDED.user_id,*/
-                                       status     = EXCLUDED.status;
+                status = EXCLUDED.status,
+                added_at = NOW();
         `;
 
         const queryParams = [postId, userId, status];
@@ -79,6 +118,4 @@ export class PostLikesCommandRepository {
 
         await this.dataSource.query(query, queryParams);
     }
-
-
 }

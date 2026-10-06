@@ -52,7 +52,8 @@ export class CommentLikesCommandRepository {
             ON CONFLICT (comment_id,
                 user_id) DO UPDATE SET /*comment_id = EXCLUDED.comment_id,
                                        user_id    = EXCLUDED.user_id,*/
-                                       status     = EXCLUDED.status;
+                                       status     = EXCLUDED.status,
+                                       added_at = NOW();
         `;
 
         const queryParams = [commentId, userId, status];

@@ -30,35 +30,41 @@ export class ChangePostLikeStatusHandler implements ICommandHandler<ChangePostLi
     async execute({ dto }: ChangePostLikeStatus): Promise<void> {
         const { postId, userId, newLikeStatus } = dto;
 
+        // console.warn('<---- postId to be found: ', postId);
+
         // проверяем что пост, которому пользователь меняет лайк-статус, существует
-        const post = this.postsCommandRepository.SQLifPostExists(postId);
-        if (!post) {
+        const ifPostExists = await this.postsCommandRepository.SQLifPostExists(postId);
+        if (!ifPostExists) {
             throw new DomainException({
                 code: DomainExceptionCode.PostNotFound,
                 message: `Post not found`,
             });
         }
 
+        // console.warn('<---- ifPostExists value is: ', ifPostExists);
+
         // проверяем наличие реакции на пост
         const currentLikeStatus =
-            await this.postLikesCommandRepository.SQLgetLikeByCommentIdAndUserId(
+            await this.postLikesCommandRepository.SQLgetLikeByPostIdAndUserId(
                 postId, userId
             );
+
+        console.warn('<---- currentLikeStatus value is: ', currentLikeStatus);
 
 
         // НАЧАЛО ПРОВЕРОК
         // если прежней реакции не найдено и новая реакция не None, значит реакция добавляется впервые
         // и надо будет просто увеличить счетчик лайков или дислайков и добавить новую запись
-        if (currentLikeStatus === null && newLikeStatus !== 'None') {
+        if ((currentLikeStatus === null || currentLikeStatus === 'None') && newLikeStatus !== 'None') {
             // создаем новый лайк в базе
             await this.postLikesCommandRepository.SQLupdateLikeStatus(postId, userId, newLikeStatus);
 
             // меняем счетчик
             if (newLikeStatus === 'Like') {
-                await this.postsCommandRepository.SQLchangeCommentLikesCounter(postId, 1);
+                await this.postsCommandRepository.SQLchangePostLikesCounter(postId, 1);
             }
             else if (newLikeStatus === 'Dislike') {
-                await this.postsCommandRepository.SQLchangeCommentDislikesCounter(postId, 1);
+                await this.postsCommandRepository.SQLchangePostDislikesCounter(postId, 1);
             }
         }
         // если прежняя реакция найдена и она не равна вновь переданной
@@ -73,10 +79,10 @@ export class ChangePostLikeStatusHandler implements ICommandHandler<ChangePostLi
 
                 // делаем декремент счетчика лайка или дизлайка
                 if(currentLikeStatus === 'Like'){
-                    await this.postsCommandRepository.SQLchangeCommentLikesCounter(postId, -1);
+                    await this.postsCommandRepository.SQLchangePostLikesCounter(postId, -1);
                 }
                 else if (currentLikeStatus === 'Dislike') {
-                    await this.postsCommandRepository.SQLchangeCommentDislikesCounter(postId, -1);
+                    await this.postsCommandRepository.SQLchangePostDislikesCounter(postId, -1);
                 }
 
             } else {

@@ -30,6 +30,7 @@ export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCom
 
     async execute({ dto }: ChangeCommentLikeStatus): Promise<void> {
         const { commentId, userId, newLikeStatus } = dto;
+        // console.warn('<---- commentId to be found: ', commentId);
 
         // новый порядок для postgreSQL:
         // запрашиваем статус коммента, на случай если он не существует и новый статус None -
@@ -38,10 +39,13 @@ export class ChangeCommentLikeStatusHandler implements ICommandHandler<ChangeCom
 
         // сначала проверяем что коммент вообще существует, т.е. и пост к которому комментарий относится существует,
         // а также существует и блог к которому относится пост
+
         const ifCommentExists =
             await this.commentsCommandRepository.SQLifCommentExists(
                 commentId,
             );
+
+        // console.warn('<---- ifCommentExists value is: ', ifCommentExists);
 
         if (!ifCommentExists) {
             throw new DomainException({

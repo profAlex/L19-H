@@ -83,6 +83,8 @@ export class CommentsController {
         @Body() body: ChangeCommentLikeStatusInputDto,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ) {
+        // console.warn('...Entered \'changeCommentLikeStatus\' method, route: \'PUT /comments/:commentId/like-status\'\n');
+
         return this.commandBus.execute<ChangeCommentLikeStatus>(
             new ChangeCommentLikeStatus({
                 commentId: commentId,
@@ -104,6 +106,8 @@ export class CommentsController {
         @Body() body: UpdateCommentInputDto,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<void> {
+        // console.warn('...Entered \'updateCommentById\' method, route: \'PUT /comments/:commentId\'\n');
+
         return this.commandBus.execute<UpdateCommentById>(
             new UpdateCommentById(commentId, user.userId, body.content),
         );
@@ -120,7 +124,7 @@ export class CommentsController {
         @Param('commentId') commentId: string,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<void> {
-        console.warn('...Entered \'deleteCommentById\' method, route: \'DELETE /comments/:commentId\'');
+        // console.warn('...Entered \'deleteCommentById\' method, route: \'DELETE /comments/:commentId\'\n');
 
         return this.commandBus.execute<DeleteCommentById>(
             new DeleteCommentById(commentId, user.userId),

@@ -62,6 +62,9 @@ export class PostsController {
         @Body() body: ChangePostLikeStatusInputDto,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ) {
+
+        console.warn('...Entered \'changeCommentLikeStatus\' method, route: \'PUT /comments/:commentId/like-status\'\n');
+
         return this.commandBus.execute<ChangePostLikeStatus>(
             new ChangePostLikeStatus({
                 postId: postId,
@@ -98,7 +101,7 @@ export class PostsController {
         @Body() body: CreateCommentApiInputDto,
         @ExtractUserIfExistsFromRequest() user: UserAccessTokenContextDto,
     ): Promise<CommentViewDto> {
-        console.warn('...Entered \'createNewComment\' method, route: \'POST /posts/:postId/comments\'');
+        // console.warn('...Entered \'createNewComment\' method, route: \'POST /posts/:postId/comments\'\n');
 
         return this.commandBus.execute<CreateNewComment>(
             new CreateNewComment(postId, body, user.userId),

@@ -172,11 +172,14 @@ export class PostsCommandRepository {
             [postId],
         );
 
+        // console.warn('<-- queryRow?.exists inside postgers value is: ', queryRow?.exists);
+
+
         return queryRow?.exists ?? false; // на случай если queryRow вернется как undefined по каким-то причинам
     }
 
 
-    async SQLchangeCommentLikesCounter(
+    async SQLchangePostLikesCounter(
         postId: string,
         direction: CounterDirection,
     ): Promise<void> {
@@ -191,7 +194,7 @@ export class PostsCommandRepository {
     }
 
 
-    async SQLchangeCommentDislikesCounter(
+    async SQLchangePostDislikesCounter(
         postId: string,
         direction: CounterDirection,
     ): Promise<void> {
